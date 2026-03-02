@@ -1,0 +1,37 @@
+- url: https://jenkins.eat.jnj.com/asx-jjev-dev/
+  # Job Creation details
+  createJobsFrom:           # branches to create jenkins job from
+      - develop
+      - main
+      - feature/*
+  createJobsIncludeAuthors: # create jobs for all users making commits to the repo
+      - .*
+  createJobsIgnoreAuthors:  # ignore creation of Jobs triggered by service account
+      - sa-.*
+  createJobsIncludeCommits:
+      - .*
+  createJobsIgnoreCommits: []
+
+  # Job Trigger details
+  triggerJobsFrom:          # branches where jenkins job build is triggered when a change is detected
+      - feature/.*
+      - bugfix/.*
+      - hotfix/.*
+      - develop
+  triggerJobsIncludeAuthors:
+      - .*
+  triggerJobsIgnoreAuthors:
+      - sa-.*
+  triggerJobsIncludeCommits:
+      - .*
+
+  # Job Configuration Details
+  jobs:                     # list of job definitions
+      - jobStyle: multi-branch-pipeline
+        jobName: uc-001-test-agent/development-pipelines
+        jobCredentials: sourcecode-bitbucket
+        includeBranches:
+          - feature/*
+          - bugfix/*
+          - hotfix/*
+          - develop

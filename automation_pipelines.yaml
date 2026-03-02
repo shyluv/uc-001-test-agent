@@ -1,0 +1,5 @@
+# Copy contents from existing agent repo
+- service: eat-jenkins
+  teamKey: jjev
+  jenkinsType: dev
+  environment: Production

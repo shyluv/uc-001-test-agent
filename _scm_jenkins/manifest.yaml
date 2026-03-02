@@ -1,0 +1,127 @@
+
+# Pipeline details across environments (defaults)
+common:
+  pipelineType: app-dev
+  # debug: true
+  cmdb:
+    enabled: true
+    appid: APP-12345
+
+  lint:
+    enabled: false
+    type: multi
+    stages:
+      validate:
+        enabled: true
+        type: terraform-validate
+        runInit: true
+      tflint:
+        enabled: true
+        type: tflint
+        runInit: true
+      fmt:
+        enabled: true
+        type: terraform-fmt
+        runInit: true
+
+  customVars:
+    backendBucket: "genai-jjev-123456789012"
+    jenkinsExecutionRole: "arn:aws:iam::123456789012:role/jpm-genai-role"
+    agentName: "test-agent"
+    region: "us-east-1"
+
+terraform:
+  dockerImage: jnj.artifactrepo.jnj.com/jpm/terraform:1.3
+  requireSignedCommit: false
+  auth:
+    aws:
+      type: aws-profile
+      roleArn: "${manifest.customVars.jenkinsExecutionRole}"
+      region: us-east-1
+  env:
+    TF_VAR_env: ${manifest.jpmEnvironment}
+    TF_VAR_project: ${manifest.bbProject}
+
+gitversion:
+  dockerImage: jnj.artifactrepo.jnj.com/jpm/gitversion:5
+
+versionCalculation:
+  enabled: true
+  type: gitversion
+  patternType: jnj-developer-branch
+
+staticAnalysis:
+  enabled: true
+  type: sonar
+
+package:
+  enabled: false
+
+publish:
+  enabled: true
+  type: docker
+  credsList:
+    - registry: https://jnj.artifactrepo.jnj.com
+      credentialsId: sourcecode-bitbucket
+    - registry: https://jjev-docker.artifactrepo.jnj.com
+      credentialsId: sourcecode-bitbucket
+
+resolveArtifacts:
+  enabled: false
+
+buildAnalysis:
+  enabled: false
+
+deploy:
+  enabled: true
+  type: multi
+  stages:
+    agent:
+      enabled: true
+      dryRun: false
+      type: terraform
+      action: apply
+      path: _scm_iac/
+      initCommand: "init -reconfigure -backend-config='bucket=${manifest.customVars.backendBucket}' -backend-config='key-agents/${manifest.customVars.agentName}/${manifest.jpmEnvironment}/${manifest.projectBranch}/terraform.tfstate' -backend-config='region=${manifest.customVars.region}'"
+
+environments:
+  PREDEV:
+    publish:
+      enabled: true
+      tagStrategy: predev
+      type: docker
+    staticAnalysis:
+      enabled: true
+    resolveArtifacts:
+      enabled: false
+    lint:
+      enabled: true
+      stages:
+        validate:
+          enabled: true
+        tflint:
+          enabled: true
+          type: tflint
+          runInit: true
+          initCommand: "init -reconfigure -backend-config='bucket=${manifest.customVars.backendBucket}' -backend-config='key-agents/${manifest.customVars.agentName}/${manifest.jpmEnvironment}/${manifest.projectBranch}/terraform.tfstate'"
+        fmt:
+          enabled: true
+          type: terraform-fmt
+          runInit: true
+    dockerLint:
+      enabled: true
+    deploy:
+      # PREDEV will deploy resources (dryRun disabled)
+      enabled: true
+      type: multi
+      dryrun: false
+      stages:
+        foundations:
+          enabled: true
+          dryRun: false
+          type: terraform
+          action: apply
+          path: _scm_iac/terraform
+          initCommand: "init -reconfigure -backend-config='bucket=${manifest.customVars.backendBucket}' -backend-config='key-agents/${manifest.customVars.agentName}/${manifest.jpmEnvironment}/${manifest.projectBranch}/terraform.tfstate'"
+          planCommand: "plan -var-file='../../_scm_config/${manifest.jpmEnvironment}.tfvars'"
+          applyCommand: "apply -var-file='../../_scm_config/${manifest.jpmEnvironment}.tfvars'"

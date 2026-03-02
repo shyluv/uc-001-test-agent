@@ -1,0 +1,35 @@
+name: bedrock-agentcore-test-agent-dev
+
+tagStrategies:
+  predev:
+    branches:
+      - feature/.*
+      - bugfix/.*
+      - hotfix/.*
+    tags:
+      - ${Major}.${Minor}.${Patch}-alpha.${CommitsSinceVersionSource}.${PreReleaseLabel}
+      - latest
+  dev:
+    branches:
+      - develop
+    tags:
+      - ${Major}.${Minor}.${Patch}-beta.${CommitsSinceVersionSource}
+
+build: true
+artifactoryRepository: jjev-docker
+
+buildCommand: context create multiarch --from default; unset DOCKER_HOST;
+              docker buildx create --name builder --bootstrap --driver=docker-container
+              --driver-opt image=jnj-docker.artifactrepo.jnj.com/moby/buildkit --use multiarch; docker buildx build
+commandArgs:
+    - platform: linux/arm64
+    - load: true
+
+additionalRepositories:
+  - type: ecr
+    region: us-east-1
+    auth:
+      awsroleauth:
+        type: aws-profile
+        roleArn: arn:aws:iam::123456789012:role/jpm-genai-role
+        region: us-east-1
